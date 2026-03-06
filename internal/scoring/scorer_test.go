@@ -216,3 +216,160 @@ func TestParseSkillLevel(t *testing.T) {
 		}
 	}
 }
+
+func TestScoreReposEmpty(t *testing.T) {
+	scored := ScoreRepos([]ghapi.RepoResult{}, []string{"go"}, nil, Intermediate)
+
+	if len(scored) != 0 {
+		t.Errorf("expected empty result for empty input, got %d repos", len(scored))
+	}
+}
+
+func TestScoreReposAdvanced(t *testing.T) {
+	repos := []ghapi.RepoResult{
+		{
+			FullName:        "inactive/repo",
+			Language:        "Go",
+			Stars:           100,
+			LastPushedAt:    time.Now().Add(-500 * 24 * time.Hour), // inactive
+			GoodFirstIssues: 10,                                     // high friendliness
+		},
+		{
+			FullName:        "active/repo",
+			Language:        "Go",
+			Stars:           5000,
+			LastPushedAt:    time.Now().Add(-2 * 24 * time.Hour), // recently active
+			GoodFirstIssues: 0,                                    // no good first issues
+		},
+	}
+
+	scored := ScoreRepos(repos, []string{"go"}, nil, Advanced)
+
+	if len(scored) != 2 {
+		t.Fatalf("expected 2 scored repos, got %d", len(scored))
+	}
+
+	// Advanced skill should prioritize activity (55%), so active/repo should rank higher
+	// despite having lower friendliness
+	if scored[0].FullName != "active/repo" {
+		t.Errorf("expected active/repo to rank first for Advanced skill, got %s", scored[0].FullName)
+	}
+}
+
+func TestRecencyScore(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name     string
+		lastPush time.Time
+		expected float64
+	}{
+		{
+			name:     "pushed today (0 hours ago)",
+			lastPush: now.Add(-1 * time.Hour), // definitely <= 7 days
+			expected: 100,
+		},
+		{
+			name:     "pushed 3 days ago",
+			lastPush: now.Add(-3 * 24 * time.Hour), // definitely <= 7 days
+			expected: 100,
+		},
+		{
+			name:     "pushed 8 days ago",
+			lastPush: now.Add(-8 * 24 * time.Hour), // > 7 days but <= 30 days
+			expected: 75,
+		},
+		{
+			name:     "pushed 20 days ago",
+			lastPush: now.Add(-20 * 24 * time.Hour), // <= 30 days
+			expected: 75,
+		},
+		{
+			name:     "pushed 31 days ago",
+			lastPush: now.Add(-31 * 24 * time.Hour), // > 30 days but <= 90 days
+			expected: 50,
+		},
+		{
+			name:     "pushed 60 days ago",
+			lastPush: now.Add(-60 * 24 * time.Hour), // <= 90 days
+			expected: 50,
+		},
+		{
+			name:     "pushed 91 days ago",
+			lastPush: now.Add(-91 * 24 * time.Hour), // > 90 days but <= 365 days
+			expected: 25,
+		},
+		{
+			name:     "pushed 180 days ago",
+			lastPush: now.Add(-180 * 24 * time.Hour), // <= 365 days
+			expected: 25,
+		},
+		{
+			name:     "pushed 400 days ago",
+			lastPush: now.Add(-400 * 24 * time.Hour), // > 365 days
+			expected: 0,
+		},
+		{
+			name:     "zero time (not set)",
+			lastPush: time.Time{},
+			expected: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := recencyScore(tt.lastPush)
+			if got != tt.expected {
+				t.Errorf("recencyScore() = %.0f, want %.0f", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestWeights(t *testing.T) {
+	tests := []struct {
+		name          string
+		skill         SkillLevel
+		expActivity   float64
+		expFriendly   float64
+		expRelevance  float64
+	}{
+		{
+			name:         "beginner",
+			skill:        Beginner,
+			expActivity:  0.25,
+			expFriendly:  0.50,
+			expRelevance: 0.25,
+		},
+		{
+			name:         "intermediate",
+			skill:        Intermediate,
+			expActivity:  0.40,
+			expFriendly:  0.35,
+			expRelevance: 0.25,
+		},
+		{
+			name:         "advanced",
+			skill:        Advanced,
+			expActivity:  0.55,
+			expFriendly:  0.20,
+			expRelevance: 0.25,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			act, friendly, relevance := weights(tt.skill)
+
+			if act != tt.expActivity {
+				t.Errorf("activity weight = %.2f, want %.2f", act, tt.expActivity)
+			}
+			if friendly != tt.expFriendly {
+				t.Errorf("friendliness weight = %.2f, want %.2f", friendly, tt.expFriendly)
+			}
+			if relevance != tt.expRelevance {
+				t.Errorf("relevance weight = %.2f, want %.2f", relevance, tt.expRelevance)
+			}
+		})
+	}
+}
