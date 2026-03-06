@@ -45,6 +45,10 @@ contributum issues --lang rust
 contributum search --lang javascript --json
 ```
 
+## Demo
+
+![Contributum search results showing a table of JavaScript repositories with scores and descriptions](assets/demo-screenshot.png)
+
 ## Authentication
 
 Contributum uses the GitHub Search API. Without authentication, you're limited to **10 search requests per minute**. With a token, you get **30 requests per minute**.
