@@ -6,7 +6,7 @@ First off, thanks for your interest in contributing! Contributum is an open-sour
 
 ### Prerequisites
 
-- **Go 1.26.1 or later** — Check your version with `go version`
+- **Go 1.24 or later** — Check your version with `go version`
 - **Git** — For cloning and making commits
 - **GitHub Personal Access Token** (optional but recommended)
   - Provides higher rate limits for the GitHub API (30 req/min vs 10 req/min)
