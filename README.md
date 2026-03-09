@@ -1,5 +1,8 @@
 # Contributum
 
+[![CI](https://github.com/ijshd7/contributum/actions/workflows/ci.yml/badge.svg)](https://github.com/ijshd7/contributum/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ijshd7/contributum)](https://github.com/ijshd7/contributum/releases)
+
 Find open-source repositories to contribute to, right from your terminal.
 
 Contributum searches GitHub for projects that match your language preferences, topics of interest, and skill level. It scores repositories by activity, contribution-friendliness, and relevance to help you find the best places to start contributing.
